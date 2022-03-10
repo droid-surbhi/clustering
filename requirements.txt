@@ -1,0 +1,5 @@
+gensim
+pandas
+numpy
+nltk==3.2.5
+scikit-learn

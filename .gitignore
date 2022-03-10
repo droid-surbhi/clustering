@@ -1,0 +1,4 @@
+/env/
+/test_models/
+/__pycache__/
+**/__pycache__/
