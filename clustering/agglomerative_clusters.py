@@ -102,9 +102,7 @@ def find_clusters(new_samples: pd.DataFrame, thresh1:float=THRESH1, old_samples:
     if 'tokens' not in new_samples.columns:
         new_samples['content_mod'] = new_samples['content'].apply(lambda x: re.sub('''[@#'"]''', '', x))
         new_samples['content_mod'] = new_samples['content_mod'].apply(lambda x: re.sub('http(s)?://[^\s]+', '', x))
-       
         new_samples['tokens'] = new_samples['content_mod'].apply(cleanse)
-        
         new_samples['content_mod'] = new_samples['tokens'].apply(lambda x: ' '.join(x))
     else:
         if not isinstance(new_samples['tokens'].values[0], list):
@@ -120,24 +118,30 @@ def find_clusters(new_samples: pd.DataFrame, thresh1:float=THRESH1, old_samples:
     
     # if old topics not available, create new topics only
     if type(old_samples) != pd.DataFrame:
-        return cluster_only_new(new_samples, thresh1=thresh1, nfeatures=nfeatures)
-    if len(old_samples) == 0:
-        return cluster_only_new(new_samples, thresh1=thresh1, nfeatures=nfeatures)
-    # create vectorizer with new and old samples, create new clusters
-    old_samples.reset_index(inplace=True, drop=True)
-    new_samples['index'] = range(len(old_samples), len(old_samples)+len(new_samples))
-    new_samples.set_index('index', inplace=True, drop=True)
-    vectorizer, Xnew, new_samples = cluster_agg_new(old_samples=old_samples, new_samples=new_samples,
-                                                  thresh1=thresh1, nfeatures=nfeatures)
-    Xold = vectorizer.transform(old_samples['spaced_tokens']) 
-    Xold[Xold==0] = 0.00001
-    # distances between each of the new and old samples 
-    paired_distances = pairwise_distances(Xnew, Xold, metric='cosine')
-    # map new clusters to old ones based on distances
-    mapper_new_old = map_new_to_old(paired_distances=paired_distances, old_samples=old_samples, new_samples=new_samples, thresh1=thresh1)
-    new_samples['class_prd'] = new_samples['class_prd'].apply(lambda x: mapper_new_old[x] if x in mapper_new_old.index else x)
+        new_samples = cluster_only_new(new_samples, thresh1=thresh1, nfeatures=nfeatures)
+        
+    elif len(old_samples) == 0:
+        new_samples = cluster_only_new(new_samples, thresh1=thresh1, nfeatures=nfeatures)
+
+    else:    
+        # create vectorizer with new and old samples, create new clusters
+        old_samples = old_samples[old_samples['class_prd']!=-1]
+        old_samples.reset_index(inplace=True, drop=True)
+        new_samples['old_index'] = new_samples.index
+        new_samples['index'] = range(len(old_samples), len(old_samples)+len(new_samples))
+        new_samples.set_index('index', inplace=True, drop=True)
+        vectorizer, Xnew, new_samples = cluster_agg_new(old_samples=old_samples, new_samples=new_samples,
+                                                    thresh1=thresh1, nfeatures=nfeatures)
+        Xold = vectorizer.transform(old_samples['spaced_tokens']) 
+        Xold[Xold==0] = 0.00001
+        # distances between each of the new and old samples 
+        paired_distances = pairwise_distances(Xnew, Xold, metric='cosine')
+        # map new clusters to old ones based on distances
+        mapper_new_old = map_new_to_old(paired_distances=paired_distances, old_samples=old_samples, new_samples=new_samples, thresh1=thresh1)
+        new_samples['class_prd'] = new_samples['class_prd'].apply(lambda x: mapper_new_old[x] if x in mapper_new_old.index else x)
     if len(no_topic_samples)>0:
         no_topic_samples['class_prd']=-1
+        new_samples = new_samples.append(no_topic_samples)
     return new_samples
 
 
