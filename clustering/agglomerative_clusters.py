@@ -25,11 +25,8 @@ def cluster_only_new(new_samples: pd.DataFrame, thresh1: float, nfeatures: int) 
     create new clusters if only new_samples are available.
     """
     vectorizer = TfidfVectorizer(max_features=nfeatures, tokenizer=lambda x: x.split(' '))
-    tfidf_mat = vectorizer.fit_transform(new_samples['spaced_tokens'])
-    X = tfidf_mat.todense()
-    X[X==0]=0.00001
+    Xnew = vectorizer.fit_transform(new_samples['spaced_tokens'])
 
-    Xnew = vectorizer.transform(new_samples['spaced_tokens'])
     Xnew[Xnew==0] = 0.00001
 
     clusters_agg = AgglomerativeClustering(n_clusters=None, affinity='cosine', distance_threshold=thresh1, linkage='average')\
